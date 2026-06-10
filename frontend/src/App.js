@@ -1,5 +1,6 @@
 import './App.css';
 import { useState, useEffect, useRef } from 'react';
+import { createTheme, ThemeProvider, CssBaseline } from '@mui/material';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
@@ -8,14 +9,16 @@ import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
+import Popover from '@mui/material/Popover';
 import Stack from '@mui/material/Stack';
 import Divider from '@mui/material/Divider';
 import Alert from '@mui/material/Alert';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemText from '@mui/material/ListItemText';
-import Tabs from '@mui/material/Tabs';
-import Tab from '@mui/material/Tab';
+import Stepper from '@mui/material/Stepper';
+import Step from '@mui/material/Step';
+import StepLabel from '@mui/material/StepLabel';
 import IconButton from '@mui/material/IconButton';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
@@ -24,10 +27,34 @@ import FormControl from '@mui/material/FormControl';
 import Tooltip from '@mui/material/Tooltip';
 import InputAdornment from '@mui/material/InputAdornment';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import { MapContainer, TileLayer, Marker } from 'react-leaflet'
+import ShareIcon from '@mui/icons-material/Share';
+import SettingsIcon from '@mui/icons-material/Settings';
+import EditIcon from '@mui/icons-material/Edit';
+import CoffeeMakerIcon from '@mui/icons-material/CoffeeMaker';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 
 const API_BASE = 'http://localhost:5000'
+
+const darkTheme = createTheme({
+  palette: {
+    mode: 'dark',
+    primary: {
+      main: '#38bdf8', // Sky 400
+    },
+    background: {
+      default: '#020617', // Slate 950
+      paper: '#0f172a',   // Slate 900
+    },
+    divider: 'rgba(255, 255, 255, 0.12)',
+  },
+  typography: {
+    fontFamily: '"Inter", "system-ui", "-apple-system", sans-serif',
+  },
+  shape: {
+    borderRadius: 12,
+  },
+});
 
 const getBrowserTimeZone = () => {
   try {
@@ -175,7 +202,7 @@ export default function App() {
   const [activityDialogOpen, setActivityDialogOpen] = useState(false);
   const [eventDialogOpen, setEventDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
-  const [isNameEditing, setIsNameEditing] = useState(false);
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
   const [timeZones, setTimeZones] = useState([]);
   const [activityLookupLoading, setActivityLookupLoading] = useState(false);
   const viewerTabInitialized = useRef(false);
@@ -184,6 +211,8 @@ export default function App() {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [activityForm, setActivityForm] = useState({ name: '', description: '', address: '', locationLat: '', locationLng: '', duration: '', suggestedStart: '', suggestedEnd: '' });
   const [eventForm, setEventForm] = useState({ activityId: '', start: '', end: '' });
+  const [showEditLinkPopover, setShowEditLinkPopover] = useState(false);
+  const editLinkButtonRef = useRef(null);
 
   const secretPath = window.location.pathname.startsWith('/plan/')
     ? window.location.pathname.replace('/plan/', '')
@@ -211,6 +240,9 @@ export default function App() {
         setPlan({ ...planData, timezone: planData.timezone || browserTimeZone })
         setEditName(planData.name)
         setError('')
+        if (secretPath) {
+          setShowEditLinkPopover(true)
+        }
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false))
@@ -494,7 +526,6 @@ export default function App() {
   }
 
   const handleNameBlur = async () => {
-    setIsNameEditing(false)
     if (!plan) {
       return
     }
@@ -638,17 +669,17 @@ export default function App() {
                 <Box sx={{ flex: 1 }}>
                   <ListItemText
                     primary={activity.name}
-                    secondary={activity.description ? `Description: ${activity.description}` : ''}
+                    secondary={activity.description ? `${activity.description}` : ''}
                   />
                 </Box>
-                <Box sx={{ width: 220, height: 140 }}>
+                <Box sx={{ width: 185, height: 140 }}>
                   {lat !== undefined && lng !== undefined ? (
                     <MapContainer center={[lat, lng]} zoom={13} style={{ height: '100%', width: '100%' }} scrollWheelZoom={false}>
                       <TileLayer url='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png' />
                       <Marker position={[lat, lng]} />
                     </MapContainer>
                   ) : (
-                    <Box sx={{ width: '100%', height: '100%', bgcolor: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Box sx={{ width: '100%', height: '100%', bgcolor: 'action.disabledBackground', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <Typography variant='caption' color='text.secondary'>No coordinates</Typography>
                     </Box>
                   )}
@@ -666,12 +697,7 @@ export default function App() {
       return <Typography color='text.secondary'>No events yet.</Typography>
     }
     const sortedEvents = [...plan.events].sort((a, b) => {
-      const aTime = getPlanTimestampKey(a.start)
-      const bTime = getPlanTimestampKey(b.start)
-      if (typeof aTime === 'string' && typeof bTime === 'string') {
-        return aTime.localeCompare(bTime)
-      }
-      return aTime - bTime
+      return getPlanTimestampKey(a.start) - getPlanTimestampKey(b.start)
     })
     return (
       <List dense>
@@ -692,17 +718,17 @@ export default function App() {
                   </Typography>
                   <ListItemText
                     primary={event.activity.name}
-                    secondary={event.activity.description ? `Description: ${event.activity.description}` : ''}
+                    secondary={event.activity.description}
                   />
                 </Box>
-                <Box sx={{ width: 220, height: 140 }}>
+                <Box sx={{ width: 185, height: 140 }}>
                   {lat !== undefined && lng !== undefined ? (
                     <MapContainer center={[lat, lng]} zoom={13} style={{ height: '100%', width: '100%' }} scrollWheelZoom={false}>
                       <TileLayer url='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png' />
                       <Marker position={[lat, lng]} />
                     </MapContainer>
                   ) : (
-                    <Box sx={{ width: '100%', height: '100%', bgcolor: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Box sx={{ width: '100%', height: '100%', bgcolor: 'action.disabledBackground', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <Typography variant='caption' color='text.secondary'>No coordinates</Typography>
                     </Box>
                   )}
@@ -724,12 +750,7 @@ export default function App() {
       .filter((event) => event.start)
       .filter((event) => getPlanDateIso(event.start) === todayIso)
       .sort((a, b) => {
-        const aTime = getPlanTimestampKey(a.start)
-        const bTime = getPlanTimestampKey(b.start)
-        if (typeof aTime === 'string' && typeof bTime === 'string') {
-          return aTime.localeCompare(bTime)
-        }
-        return aTime - bTime
+        return getPlanTimestampKey(a.start) - getPlanTimestampKey(b.start)
       })
 
     if (!todayEvents.length) {
@@ -755,17 +776,17 @@ export default function App() {
                   </Typography>
                   <ListItemText
                     primary={event.activity.name}
-                    secondary={event.activity.description ? `${event.activity.description}` : ''}
+                    secondary={event.activity.description}
                   />
                 </Box>
-                <Box sx={{ width: 220, height: 140 }}>
+                <Box sx={{ width: 185, height: 140 }}>
                   {lat !== undefined && lng !== undefined ? (
                     <MapContainer center={[lat, lng]} zoom={13} style={{ height: '100%', width: '100%' }} scrollWheelZoom={false}>
                       <TileLayer url='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png' />
                       <Marker position={[lat, lng]} />
                     </MapContainer>
                   ) : (
-                    <Box sx={{ width: '100%', height: '100%', bgcolor: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Box sx={{ width: '100%', height: '100%', bgcolor: 'action.disabledBackground', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <Typography variant='caption' color='text.secondary'>No coordinates</Typography>
                     </Box>
                   )}
@@ -782,7 +803,83 @@ export default function App() {
     return value === index ? <Box sx={{ pt: 2 }}>{children}</Box> : null
   }
 
-  if (viewPath) {
+  const renderContent = () => {
+    if (!viewPath && !secretPath) {
+      return (
+        <Box
+          sx={{
+            minHeight: '100vh',
+            display: 'flex',
+            position: 'relative',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bgcolor: 'transparent',
+            p: { xs: 0, md: 3 },
+          }}
+        >
+          <Box
+            sx={{
+              display: { xs: 'none', md: 'block' },
+              position: 'fixed',
+              top: 24,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              zIndex: 9999,
+              color: 'primary.main',
+              bgcolor: 'rgba(56, 189, 248, 0.1)',
+              backdropFilter: 'blur(8px)',
+              px: 3,
+              py: 1,
+              borderRadius: 10,
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              border: '1px solid rgba(56, 189, 248, 0.3)',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)',
+              pointerEvents: 'none',
+              textAlign: 'center',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            📱 Site designed for mobile
+          </Box>
+          <Box sx={{ width: 'min(100%, 520px)', p: { xs: 2, md: 4 }, bgcolor: 'background.paper', borderRadius: { xs: 0, md: 4 }, boxShadow: { xs: 'none', md: '0 24px 80px rgba(0, 0, 0, 0.4)' } }}>
+            <Typography variant='h4' mb={2} textAlign='center' sx={{ fontWeight: 700, color: 'text.primary' }}>
+              Make a Plan
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mb: 2 }}>
+              <TextField
+                fullWidth
+                label='Name your plan...'
+                value={planName}
+                onChange={(e) => setPlanName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
+              />
+              <Tooltip title="Create Plan">
+                <IconButton
+                  color="primary"
+                  onClick={handleCreate}
+                  disabled={loading}
+                  sx={{ mt: 0.5 }}
+                >
+                  <CoffeeMakerIcon fontSize="large" />
+                </IconButton>
+              </Tooltip>
+            </Box>
+            {error && <Alert severity='error' sx={{ mb: 2 }}>{error}</Alert>}
+          </Box>
+        </Box>
+      )
+    }
+
+    const isEditor = !!secretPath;
+    const eventLocations = (plan?.events || [])
+      .filter(e => e.activity?.location?.lat != null && e.activity?.location?.lng != null)
+      .map(e => ({
+        lat: e.activity.location.lat,
+        lng: e.activity.location.lng,
+        name: e.activity.name
+      }))
+
     return (
       <Box
         sx={{
@@ -790,83 +887,118 @@ export default function App() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          p: { xs: 2, md: 3 },
+          p: { xs: 0, md: 3 },
           bgcolor: 'transparent',
         }}
       >
-        <Box sx={{ width: 'min(100%, 760px)', p: { xs: 3, md: 4 }, bgcolor: 'background.paper', borderRadius: 4, boxShadow: '0 24px 80px rgba(15, 23, 42, 0.08)' }}>
-          {loading && <Typography>Loading...</Typography>}
-          {error && <Alert severity='error' sx={{ mb: 3, borderRadius: 2 }}>
-            {error}
-          </Alert>}
+        <Box sx={{ width: 'min(100%, 760px)', p: { xs: 2, md: 4 }, bgcolor: 'background.paper', borderRadius: { xs: 0, md: 4 }, boxShadow: { xs: 'none', md: '0 24px 80px rgba(0, 0, 0, 0.4)' } }}>
+          {(loading && !plan) && <Typography>Loading...</Typography>}
+          {error && <Alert severity='error' sx={{ mb: 3, borderRadius: 2 }}>{error}</Alert>}
           {plan && (
             <>
-              <Typography variant='h4' component='h1' sx={{ mb: 1.5, fontWeight: 700, letterSpacing: '-0.02em', color: 'primary.main' }}>
-                {plan.name}
-              </Typography>
-              <Typography variant='body2' color='text.secondary' sx={{ mb: 3, maxWidth: 560 }}>
-                Use the participant link below to share this plan with others. They will be able to suggest activities.
-              </Typography>
-              <Box sx={{ mb: 3 }}>
-                <Typography variant='caption' color='text.secondary' sx={{ display: 'block', mb: 1, fontWeight: 600, letterSpacing: '0.02em' }}>
-                  Share:
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                <Typography variant='h4' component='h1' sx={{ fontWeight: 700, letterSpacing: '-0.02em', color: 'text.primary' }}>
+                  {plan.name}
                 </Typography>
-                <Tooltip title="Share this with participants — they will be able to suggest activities.">
-                  <TextField
-                    fullWidth
-                    size='small'
-                    value={window.location.href}
-                    variant='outlined'
-                    InputProps={{
-                      readOnly: true,
-                      sx: {
-                        bgcolor: '#f8fbff',
-                        borderRadius: '14px',
-                        '& .MuiOutlinedInput-notchedOutline': {
-                          borderColor: '#dbeafe',
-                        },
-                        '& .MuiInputBase-input': {
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        },
-                      },
-                      endAdornment: (
-                        <InputAdornment position='end'>
-                          <IconButton size='small' onClick={() => copyToClipboard(window.location.href)} edge='end'>
-                            <ContentCopyIcon fontSize='small' />
-                          </IconButton>
-                        </InputAdornment>
-                      ),
-                    }}
-                    sx={{ minWidth: 0 }}
-                  />
-                </Tooltip>
+                <Box sx={{ display: 'flex', gap: 0.5 }}>
+                  {isEditor && (
+                    <>
+                      <Tooltip title="Copy Edit Link">
+                        <IconButton ref={editLinkButtonRef} size="small" onClick={() => copyToClipboard(window.location.href)}>
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Popover
+                        open={showEditLinkPopover}
+                        anchorEl={editLinkButtonRef.current}
+                        onClose={() => setShowEditLinkPopover(false)}
+                        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+                      >
+                        <Typography sx={{ p: 2, maxWidth: 250, fontSize: '0.875rem' }}>
+                          Make sure to copy your edit link, if you lose it you will not be able to edit your plan.
+                        </Typography>
+                      </Popover>
+                    </>
+                  )}
+                  <Tooltip title="Copy Share Link">
+                    <IconButton size="small" onClick={() => copyToClipboard(isEditor ? `${window.location.origin}/view/${plan.viewSecret}` : window.location.href)}>
+                      <ShareIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  {isEditor && (
+                    <Tooltip title="Settings">
+                      <IconButton size="small" onClick={() => setSettingsDialogOpen(true)}>
+                        <SettingsIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                </Box>
               </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                <Typography variant='body2' color='text.secondary' sx={{ mr: 1 }}>
-                  Time zone:
-                </Typography>
-                <Typography variant='body2'>{plan.timezone || browserTimeZone}</Typography>
-              </Box>
+              {eventLocations.length > 0 && (
+                <Box sx={{ height: 175, width: '100%', mb: 3, borderRadius: 2, overflow: 'hidden', border: { xs: 0, md: 1 }, borderColor: 'divider' }}>
+                  <MapContainer key={`summary-map-${eventLocations.length}`} bounds={eventLocations.map(loc => [loc.lat, loc.lng])} boundsOptions={{ padding: [50, 50] }} style={{ height: '100%', width: '100%' }}>
+                    <TileLayer url='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png' />
+                    {eventLocations.map((loc, idx) => (
+                      <Marker key={idx} position={[loc.lat, loc.lng]}>
+                        <Popup>{loc.name}</Popup>
+                      </Marker>
+                    ))}
+                  </MapContainer>
+                </Box>
+              )}
 
-              <Tabs value={activeTab} onChange={(event, newValue) => setActiveTab(newValue)} indicatorColor='primary' textColor='primary' sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}>
-                <Tab label='Activities' />
-                <Tab label='Itinerary' />
-                <Tab label='Today' />
-              </Tabs>
+              <Stepper activeStep={activeTab} alternativeLabel sx={{ mb: 4 }}>
+                {['Suggest Activities', 'Create Itinerary', 'Go'].map((label, idx) => (
+                  <Step key={label} onClick={() => setActiveTab(idx)} sx={{ cursor: 'pointer' }}>
+                    <Tooltip title={[
+                      "Add activities you potentially want to do.",
+                      "String activities together with times.",
+                      "See what's happening now"
+                    ][idx]}>
+                      <StepLabel icon={['x', 'y', 'z'][idx]}>{label}</StepLabel>
+                    </Tooltip>
+                  </Step>
+                ))}
+              </Stepper>
 
               <TabPanel value={activeTab} index={0}>
+                {isEditor && (
+                  <Stack direction='row' spacing={2} sx={{ mb: 2 }}>
+                    <Button variant='contained' color='primary' fullWidth onClick={() => openActivityDialog()}>Add Activity</Button>
+                  </Stack>
+                )}
                 {renderActivities()}
               </TabPanel>
 
               <TabPanel value={activeTab} index={1}>
+                {isEditor && (
+                  <Stack direction='row' spacing={2} sx={{ mb: 2 }}>
+                    <Button variant='contained' color='primary' fullWidth onClick={() => openEventDialog()}>Add Event</Button>
+                  </Stack>
+                )}
                 {renderEvents()}
               </TabPanel>
 
               <TabPanel value={activeTab} index={2}>
                 {renderToday()}
               </TabPanel>
+
+              <Dialog open={settingsDialogOpen} onClose={() => setSettingsDialogOpen(false)} fullWidth>
+                <DialogTitle>Plan Settings</DialogTitle>
+                <DialogContent>
+                  <Stack spacing={3} sx={{ mt: 1 }}>
+                    <TextField fullWidth label="Plan Name" value={editName} onChange={(e) => setEditName(e.target.value)} onBlur={handleNameBlur} />
+                    <FormControl fullWidth>
+                      <InputLabel id="plan-timezone-label">Plan Time Zone</InputLabel>
+                      <Select labelId="plan-timezone-label" label="Plan Time Zone" value={plan.timezone || browserTimeZone} onChange={handleTimezoneChange} MenuProps={{ PaperProps: { sx: { maxHeight: 300 } } }}>
+                        {timeZones.map((tz) => <MenuItem key={tz} value={tz}>{tz}</MenuItem>)}
+                      </Select>
+                    </FormControl>
+                  </Stack>
+                </DialogContent>
+                <DialogActions><Button onClick={() => setSettingsDialogOpen(false)}>Close</Button></DialogActions>
+              </Dialog>
+
               <Dialog open={activityDialogOpen} onClose={closeActivityDialog} fullWidth>
                 <DialogTitle>{editingActivityId ? 'Edit Activity' : 'Add Activity'}</DialogTitle>
                 <DialogContent>
@@ -876,20 +1008,20 @@ export default function App() {
                       value={activityForm.name}
                       required
                       onChange={(e) => setActivityForm((prev) => ({ ...prev, name: e.target.value }))}
-                      disabled={!!viewPath}
+                      disabled={!isEditor}
                     />
                     <TextField
                       label='Description'
                       value={activityForm.description}
                       onChange={(e) => setActivityForm((prev) => ({ ...prev, description: e.target.value }))}
-                      disabled={!!viewPath}
+                      disabled={!isEditor}
                     />
                     <TextField
                       label='Address'
                       value={activityForm.address}
                       onChange={(e) => setActivityForm((prev) => ({ ...prev, address: e.target.value }))}
                       fullWidth
-                      disabled={!!viewPath}
+                      disabled={!isEditor}
                     />
                     <Stack direction='row' spacing={1} alignItems='flex-end'>
                       <TextField
@@ -898,7 +1030,7 @@ export default function App() {
                         value={activityForm.locationLat}
                         onChange={(e) => setActivityForm((prev) => ({ ...prev, locationLat: e.target.value }))}
                         sx={{ flex: 1 }}
-                        disabled={!!viewPath}
+                        disabled={!isEditor}
                       />
                       <TextField
                         label='Longitude'
@@ -906,63 +1038,34 @@ export default function App() {
                         value={activityForm.locationLng}
                         onChange={(e) => setActivityForm((prev) => ({ ...prev, locationLng: e.target.value }))}
                         sx={{ flex: 1 }}
-                        disabled={!!viewPath}
+                        disabled={!isEditor}
                       />
                       <Button
                         variant='outlined'
                         onClick={handleAddressSuggest}
-                        disabled={!!viewPath || activityLookupLoading || !activityForm.address.trim()}
+                        disabled={!isEditor || activityLookupLoading || !activityForm.address.trim()}
                       >
                         {activityLookupLoading ? 'Looking up…' : 'Suggest'}
                       </Button>
                     </Stack>
-                    <TextField
-                      label='Duration'
-                      value={activityForm.duration}
-                      onChange={(e) => setActivityForm((prev) => ({ ...prev, duration: e.target.value }))}
-                      disabled={!!viewPath}
-                    />
-                    <TextField
-                      label='Suggested Start'
-                      type='datetime-local'
-                      value={activityForm.suggestedStart}
-                      onChange={(e) => setActivityForm((prev) => ({ ...prev, suggestedStart: e.target.value }))}
-                      InputLabelProps={{ shrink: true }}
-                      disabled={!!viewPath}
-                    />
-                    <TextField
-                      label='Suggested End'
-                      type='datetime-local'
-                      value={activityForm.suggestedEnd}
-                      onChange={(e) => setActivityForm((prev) => ({ ...prev, suggestedEnd: e.target.value }))}
-                      InputLabelProps={{ shrink: true }}
-                      disabled={!!viewPath}
-                    />
+                    <TextField label='Duration' value={activityForm.duration} onChange={(e) => setActivityForm((prev) => ({ ...prev, duration: e.target.value }))} disabled={!isEditor} />
+                    <TextField label='Suggested Start' type='datetime-local' value={activityForm.suggestedStart} onChange={(e) => setActivityForm((prev) => ({ ...prev, suggestedStart: e.target.value }))} InputLabelProps={{ shrink: true }} disabled={!isEditor} />
+                    <TextField label='Suggested End' type='datetime-local' value={activityForm.suggestedEnd} onChange={(e) => setActivityForm((prev) => ({ ...prev, suggestedEnd: e.target.value }))} InputLabelProps={{ shrink: true }} disabled={!isEditor} />
                   </Stack>
                 </DialogContent>
                 <DialogActions sx={{ justifyContent: 'space-between' }}>
-                  {viewPath ? (
-                    <Box />
-                  ) : editingActivityId ? (
-                    <Button color='error' onClick={handleDeleteActivity} disabled={loading}>
-                      Delete
-                    </Button>
-                  ) : <Box />}
+                  {!isEditor ? <Box /> : editingActivityId ? <Button color='error' onClick={handleDeleteActivity} disabled={loading}>Delete</Button> : <Box />}
                   <Box>
                     <Button onClick={closeActivityDialog}>Close</Button>
-                    {!viewPath && (
-                      <Button onClick={handleSaveActivity} variant='contained' disabled={loading}>
-                        {editingActivityId ? 'Save Activity' : 'Add Activity'}
-                      </Button>
-                    )}
+                    {isEditor && <Button onClick={handleSaveActivity} variant='contained' disabled={loading}>{editingActivityId ? 'Save Activity' : 'Add Activity'}</Button>}
                   </Box>
                 </DialogActions>
               </Dialog>
 
               <Dialog open={eventDialogOpen} onClose={closeEventDialog} fullWidth>
-                <DialogTitle>{viewPath ? 'View Event' : editingEventId ? 'Edit Event' : 'Add Event'}</DialogTitle>
+                <DialogTitle>{!isEditor ? 'View Event' : editingEventId ? 'Edit Event' : 'Add Event'}</DialogTitle>
                 <DialogContent>
-                  {viewPath && selectedEvent ? (
+                  {(!isEditor && selectedEvent) ? (
                     <Stack spacing={2} sx={{ mt: 1 }}>
                       <Typography variant='subtitle1'>Activity</Typography>
                       <Typography><strong>Name:</strong> {selectedEvent.activity?.name || '-'}</Typography>
@@ -972,13 +1075,8 @@ export default function App() {
                       <Typography><strong>Suggested Start:</strong> {selectedEvent.activity?.suggestedStart ? formatPlanDateTime(selectedEvent.activity.suggestedStart) : '-'}</Typography>
                       <Typography><strong>Suggested End:</strong> {selectedEvent.activity?.suggestedEnd ? formatPlanDateTime(selectedEvent.activity.suggestedEnd) : '-'}</Typography>
                       {(selectedEvent.activity?.location?.lat !== undefined && selectedEvent.activity?.location?.lng !== undefined) && (
-                        <Box sx={{ width: '100%', height: 180 }}>
-                          <MapContainer
-                            center={[selectedEvent.activity.location.lat, selectedEvent.activity.location.lng]}
-                            zoom={13}
-                            style={{ height: '100%', width: '100%' }}
-                            scrollWheelZoom={false}
-                          >
+                        <Box sx={{ width: 185, height: 140 }}>
+                          <MapContainer center={[selectedEvent.activity.location.lat, selectedEvent.activity.location.lng]} zoom={13} style={{ height: '100%', width: '100%' }} scrollWheelZoom={false}>
                             <TileLayer url='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png' />
                             <Marker position={[selectedEvent.activity.location.lat, selectedEvent.activity.location.lng]} />
                           </MapContainer>
@@ -993,60 +1091,20 @@ export default function App() {
                     <Stack spacing={2} sx={{ mt: 1 }}>
                       <FormControl fullWidth>
                         <InputLabel id='event-activity-label'>Select Activity</InputLabel>
-                        <Select
-                          labelId='event-activity-label'
-                          label='Select Activity'
-                          value={eventForm.activityId}
-                          onChange={(e) => setEventForm((prev) => ({ ...prev, activityId: e.target.value }))}
-                          disabled={!!viewPath}
-                        >
-                          {plan?.activities?.length ? (
-                            plan.activities.map((activity) => (
-                              <MenuItem key={String(activity._id || activity.name)} value={String(activity._id)}>
-                                {activity.name}
-                              </MenuItem>
-                            ))
-                          ) : (
-                            <MenuItem value='' disabled>
-                              No saved activities yet
-                            </MenuItem>
-                          )}
+                        <Select labelId='event-activity-label' label='Select Activity' value={eventForm.activityId} onChange={(e) => setEventForm((prev) => ({ ...prev, activityId: e.target.value }))} disabled={!isEditor}>
+                          {plan?.activities?.map((activity) => <MenuItem key={String(activity._id)} value={String(activity._id)}>{activity.name}</MenuItem>)}
                         </Select>
                       </FormControl>
-                      <TextField
-                        label='Event Start'
-                        type='datetime-local'
-                        value={eventForm.start}
-                        onChange={(e) => setEventForm((prev) => ({ ...prev, start: e.target.value }))}
-                        InputLabelProps={{ shrink: true }}
-                        disabled={!!viewPath}
-                      />
-                      <TextField
-                        label='Event End'
-                        type='datetime-local'
-                        value={eventForm.end}
-                        onChange={(e) => setEventForm((prev) => ({ ...prev, end: e.target.value }))}
-                        InputLabelProps={{ shrink: true }}
-                        disabled={!!viewPath}
-                      />
+                      <TextField label='Event Start' type='datetime-local' value={eventForm.start} onChange={(e) => setEventForm((prev) => ({ ...prev, start: e.target.value }))} InputLabelProps={{ shrink: true }} disabled={!isEditor} />
+                      <TextField label='Event End' type='datetime-local' value={eventForm.end} onChange={(e) => setEventForm((prev) => ({ ...prev, end: e.target.value }))} InputLabelProps={{ shrink: true }} disabled={!isEditor} />
                     </Stack>
                   )}
                 </DialogContent>
                 <DialogActions sx={{ justifyContent: 'space-between' }}>
-                  {viewPath ? (
-                    <Box />
-                  ) : editingEventId ? (
-                    <Button color='error' onClick={handleDeleteEvent} disabled={loading}>
-                      Delete
-                    </Button>
-                  ) : <Box />}
+                  {!isEditor ? <Box /> : editingEventId ? <Button color='error' onClick={handleDeleteEvent} disabled={loading}>Delete</Button> : <Box />}
                   <Box>
                     <Button onClick={closeEventDialog}>Close</Button>
-                    {!viewPath && (
-                      <Button onClick={handleSaveEvent} variant='contained' disabled={loading}>
-                        {editingEventId ? 'Save Event' : 'Add Event'}
-                      </Button>
-                    )}
+                    {isEditor && <Button onClick={handleSaveEvent} variant='contained' disabled={loading}>{editingEventId ? 'Save Event' : 'Add Event'}</Button>}
                   </Box>
                 </DialogActions>
               </Dialog>
@@ -1057,382 +1115,10 @@ export default function App() {
     )
   }
 
-  if (secretPath) {
-    return (
-      <Box
-        sx={{
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          p: { xs: 2, md: 3 },
-          bgcolor: 'transparent',
-        }}
-      >
-        <Box sx={{ width: 'min(100%, 760px)', p: { xs: 3, md: 4 }, bgcolor: 'background.paper', borderRadius: 4, boxShadow: '0 24px 80px rgba(15, 23, 42, 0.08)' }}>
-          
-          {loading && <Typography>Loading...</Typography>}
-          {error && <Alert severity='error' sx={{ mb: 2 }}>{error}</Alert>}
-          {plan && (
-            <>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                {isNameEditing ? (
-                  <TextField
-                    fullWidth
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    onBlur={handleNameBlur}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.currentTarget.blur()
-                      }
-                    }}
-                    autoFocus
-                  />
-                ) : (
-                  <Typography variant='h4' component='h1' sx={{ flexGrow: 1, fontWeight: 700, color: 'primary.main' }}>
-                    {plan.name}
-                  </Typography>
-                )}
-                {!isNameEditing && (
-                  <IconButton size='small' onClick={() => setIsNameEditing(true)}>
-                    <span style={{ fontSize: 18 }}>✏️</span>
-                  </IconButton>
-                )}
-              </Box>
-              <Typography variant='body2' color='text.secondary' sx={{ mb: 3, maxWidth: 560 }}>
-                Use the edit link below to manage activities and update your itinerary. Keep this link private to preserve edit access.
-              </Typography>
-              <Box sx={{ mb: 3 }}>
-                <Typography variant='caption' color='text.secondary' sx={{ display: 'block', mb: 1, fontWeight: 600, letterSpacing: '0.02em' }}>
-                  Edit:
-                </Typography>
-                <Tooltip title="Only share this with editors — do not lose this URL or you won't be able to edit your plan.">
-                  <TextField
-                    fullWidth
-                    size='small'
-                    value={window.location.href}
-                    variant='outlined'
-                    InputProps={{
-                      readOnly: true,
-                      sx: {
-                        bgcolor: '#f8fbff',
-                        borderRadius: '14px',
-                        '& .MuiOutlinedInput-notchedOutline': {
-                          borderColor: '#dbeafe',
-                        },
-                        '& .MuiInputBase-input': {
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        },
-                      },
-                      endAdornment: (
-                        <InputAdornment position='end'>
-                          <IconButton size='small' onClick={() => copyToClipboard(window.location.href)} edge='end'>
-                            <ContentCopyIcon fontSize='small' />
-                          </IconButton>
-                        </InputAdornment>
-                      ),
-                    }}
-                    sx={{ minWidth: 0 }}
-                  />
-                </Tooltip>
-              </Box>
-              <Box sx={{ mb: 3 }}>
-                <Typography variant='caption' color='text.secondary' sx={{ display: 'block', mb: 1, fontWeight: 600, letterSpacing: '0.02em' }}>
-                  View:
-                </Typography>
-                <Tooltip title="Share this with participants — they will be able to suggest activities.">
-                  <TextField
-                    fullWidth
-                    size='small'
-                    value={plan.viewSecret ? `${window.location.origin}/view/${plan.viewSecret}` : ''}
-                    variant='outlined'
-                    InputProps={{
-                      readOnly: true,
-                      sx: {
-                        bgcolor: '#f8fbff',
-                        borderRadius: '14px',
-                        '& .MuiOutlinedInput-notchedOutline': {
-                          borderColor: '#dbeafe',
-                        },
-                        '& .MuiInputBase-input': {
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        },
-                      },
-                      endAdornment: (
-                        <InputAdornment position='end'>
-                          <IconButton size='small' onClick={() => copyToClipboard(plan.viewSecret ? `${window.location.origin}/view/${plan.viewSecret}` : window.location.href)} edge='end'>
-                            <ContentCopyIcon fontSize='small' />
-                          </IconButton>
-                        </InputAdornment>
-                      ),
-                    }}
-                    sx={{ minWidth: 0 }}
-                  />
-                </Tooltip>
-              </Box>
-              <FormControl fullWidth sx={{ mb: 2 }}>
-                <InputLabel id='plan-timezone-label'>Plan time zone</InputLabel>
-                <Select
-                  labelId='plan-timezone-label'
-                  label='Plan time zone'
-                  value={plan.timezone || browserTimeZone}
-                  onChange={handleTimezoneChange}
-                  MenuProps={{ PaperProps: { sx: { maxHeight: 300 } } }}
-                >
-                  {timeZones.map((timezone) => (
-                    <MenuItem key={timezone} value={timezone}>
-                      {timezone}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <Tabs value={activeTab} onChange={(event, newValue) => setActiveTab(newValue)} indicatorColor='primary' textColor='primary' sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}>
-                <Tab label='Activities' />
-                <Tab label='Itinerary' />
-                <Tab label='Today' />
-              </Tabs>
-
-              <TabPanel value={activeTab} index={0}>
-                <Stack direction='row' spacing={2} sx={{ mb: 2 }}>
-                  <Button variant='contained' color='primary' fullWidth onClick={() => openActivityDialog()}>
-                    Add Activity
-                  </Button>
-                </Stack>
-                {renderActivities()}
-              </TabPanel>
-
-              <TabPanel value={activeTab} index={1}>
-                <Stack direction='row' spacing={2} sx={{ mb: 2 }}>
-                  <Button variant='contained' color='primary' fullWidth onClick={() => openEventDialog()}>
-                    Add Event
-                  </Button>
-                </Stack>
-                {renderEvents()}
-              </TabPanel>
-
-              <TabPanel value={activeTab} index={2}>
-                {renderToday()}
-              </TabPanel>
-
-              <Divider sx={{ my: 2 }} />
-            </>
-          )}
-        </Box>
-
-        <Dialog open={activityDialogOpen} onClose={closeActivityDialog} fullWidth>
-          <DialogTitle>{editingActivityId ? 'Edit Activity' : 'Add Activity'}</DialogTitle>
-          <DialogContent>
-            <Stack spacing={2} sx={{ mt: 1 }}>
-              <TextField
-                label='Name'
-                value={activityForm.name}
-                required
-                onChange={(e) => setActivityForm((prev) => ({ ...prev, name: e.target.value }))}
-              />
-              <TextField
-                label='Description'
-                value={activityForm.description}
-                onChange={(e) => setActivityForm((prev) => ({ ...prev, description: e.target.value }))}
-              />
-              <TextField
-                label='Address'
-                value={activityForm.address}
-                onChange={(e) => setActivityForm((prev) => ({ ...prev, address: e.target.value }))}
-                fullWidth
-              />
-              <Stack direction='row' spacing={1} alignItems='flex-end'>
-                <TextField
-                  label='Latitude'
-                  type='number'
-                  value={activityForm.locationLat}
-                  onChange={(e) => setActivityForm((prev) => ({ ...prev, locationLat: e.target.value }))}
-                  sx={{ flex: 1 }}
-                />
-                <TextField
-                  label='Longitude'
-                  type='number'
-                  value={activityForm.locationLng}
-                  onChange={(e) => setActivityForm((prev) => ({ ...prev, locationLng: e.target.value }))}
-                  sx={{ flex: 1 }}
-                />
-                <Button
-                  variant='outlined'
-                  onClick={handleAddressSuggest}
-                  disabled={activityLookupLoading || !activityForm.address.trim()}
-                >
-                  {activityLookupLoading ? 'Looking up…' : 'Suggest'}
-                </Button>
-              </Stack>
-              <TextField
-                label='Duration'
-                value={activityForm.duration}
-                onChange={(e) => setActivityForm((prev) => ({ ...prev, duration: e.target.value }))}
-                disabled={!!viewPath}
-              />
-              <TextField
-                label='Suggested Start'
-                type='datetime-local'
-                value={activityForm.suggestedStart}
-                onChange={(e) => setActivityForm((prev) => ({ ...prev, suggestedStart: e.target.value }))}
-                InputLabelProps={{ shrink: true }}
-                disabled={!!viewPath}
-              />
-              <TextField
-                label='Suggested End'
-                type='datetime-local'
-                value={activityForm.suggestedEnd}
-                onChange={(e) => setActivityForm((prev) => ({ ...prev, suggestedEnd: e.target.value }))}
-                InputLabelProps={{ shrink: true }}
-                disabled={!!viewPath}
-              />
-            </Stack>
-          </DialogContent>
-          <DialogActions sx={{ justifyContent: 'space-between' }}>
-            {viewPath ? (
-              <Box />
-            ) : editingActivityId ? (
-              <Button color='error' onClick={handleDeleteActivity} disabled={loading}>
-                Delete
-              </Button>
-            ) : <Box />}
-            <Box>
-              <Button onClick={closeActivityDialog}>Close</Button>
-              {!viewPath && (
-                <Button onClick={handleSaveActivity} variant='contained' disabled={loading}>
-                  {editingActivityId ? 'Save Activity' : 'Add Activity'}
-                </Button>
-              )}
-            </Box>
-          </DialogActions>
-        </Dialog>
-
-        <Dialog open={eventDialogOpen} onClose={closeEventDialog} fullWidth>
-          <DialogTitle>{viewPath ? 'View Event' : editingEventId ? 'Edit Event' : 'Add Event'}</DialogTitle>
-          <DialogContent>
-            {viewPath && selectedEvent ? (
-              <Stack spacing={2} sx={{ mt: 1 }}>
-                <Typography variant='subtitle1'>Activity</Typography>
-                <Typography><strong>Name:</strong> {selectedEvent.activity?.name || '-'}</Typography>
-                <Typography><strong>Description:</strong> {selectedEvent.activity?.description || '-'}</Typography>
-                <Typography><strong>Address:</strong> {selectedEvent.activity?.address || '-'}</Typography>
-                <Typography><strong>Duration:</strong> {selectedEvent.activity?.duration || '-'}</Typography>
-                <Typography><strong>Suggested Start:</strong> {selectedEvent.activity?.suggestedStart ? formatPlanDateTime(selectedEvent.activity.suggestedStart) : '-'}</Typography>
-                <Typography><strong>Suggested End:</strong> {selectedEvent.activity?.suggestedEnd ? formatPlanDateTime(selectedEvent.activity.suggestedEnd) : '-'}</Typography>
-                {(selectedEvent.activity?.location?.lat !== undefined && selectedEvent.activity?.location?.lng !== undefined) && (
-                  <Box sx={{ width: '100%', height: 180 }}>
-                    <MapContainer
-                      center={[selectedEvent.activity.location.lat, selectedEvent.activity.location.lng]}
-                      zoom={13}
-                      style={{ height: '100%', width: '100%' }}
-                      scrollWheelZoom={false}
-                    >
-                      <TileLayer url='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png' />
-                      <Marker position={[selectedEvent.activity.location.lat, selectedEvent.activity.location.lng]} />
-                    </MapContainer>
-                  </Box>
-                )}
-                <Divider />
-                <Typography variant='subtitle1'>Event</Typography>
-                <Typography><strong>Start:</strong> {selectedEvent.start ? formatPlanDateTime(selectedEvent.start) : '-'}</Typography>
-                <Typography><strong>End:</strong> {selectedEvent.end ? formatPlanDateTime(selectedEvent.end) : '-'}</Typography>
-              </Stack>
-            ) : (
-              <Stack spacing={2} sx={{ mt: 1 }}>
-                <FormControl fullWidth>
-                  <InputLabel id='event-activity-label'>Select Activity</InputLabel>
-                  <Select
-                    labelId='event-activity-label'
-                    label='Select Activity'
-                    value={eventForm.activityId}
-                    onChange={(e) => setEventForm((prev) => ({ ...prev, activityId: e.target.value }))}
-                    disabled={!!viewPath}
-                  >
-                    {plan?.activities?.length ? (
-                      plan.activities.map((activity) => (
-                        <MenuItem key={String(activity._id || activity.name)} value={String(activity._id)}>
-                          {activity.name}
-                        </MenuItem>
-                      ))
-                    ) : (
-                      <MenuItem value='' disabled>
-                        No saved activities yet
-                      </MenuItem>
-                    )}
-                  </Select>
-                </FormControl>
-                <TextField
-                  label='Event Start'
-                  type='datetime-local'
-                  value={eventForm.start}
-                  onChange={(e) => setEventForm((prev) => ({ ...prev, start: e.target.value }))}
-                  InputLabelProps={{ shrink: true }}
-                  disabled={!!viewPath}
-                />
-                <TextField
-                  label='Event End'
-                  type='datetime-local'
-                  value={eventForm.end}
-                  onChange={(e) => setEventForm((prev) => ({ ...prev, end: e.target.value }))}
-                  InputLabelProps={{ shrink: true }}
-                  disabled={!!viewPath}
-                />
-              </Stack>
-            )}
-          </DialogContent>
-          <DialogActions sx={{ justifyContent: 'space-between' }}>
-            {viewPath ? (
-              <Box />
-            ) : editingEventId ? (
-              <Button color='error' onClick={handleDeleteEvent} disabled={loading}>
-                Delete
-              </Button>
-            ) : <Box />}
-            <Box>
-              <Button onClick={closeEventDialog}>Close</Button>
-              {!viewPath && (
-                <Button onClick={handleSaveEvent} variant='contained' disabled={loading}>
-                  {editingEventId ? 'Save Event' : 'Add Event'}
-                </Button>
-              )}
-            </Box>
-          </DialogActions>
-        </Dialog>
-      </Box>
-    )
-  }
-
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        bgcolor: 'transparent',
-        p: { xs: 2, md: 3 },
-      }}
-    >
-      <Box sx={{ width: 'min(100%, 520px)', p: { xs: 3, md: 4 }, bgcolor: 'background.paper', borderRadius: 4, boxShadow: '0 24px 80px rgba(15, 23, 42, 0.08)' }}>
-        <Typography variant='h4' mb={2} textAlign='center' sx={{ fontWeight: 700, color: 'primary.main' }}>
-          Create a New Plan
-        </Typography>
-        <TextField
-          fullWidth
-          label='Plan name'
-          value={planName}
-          onChange={(e) => setPlanName(e.target.value)}
-          sx={{ mb: 2 }}
-        />
-        {error && <Alert severity='error' sx={{ mb: 2 }}>{error}</Alert>}
-        <Button variant='contained' fullWidth onClick={handleCreate} disabled={loading}>
-          {loading ? 'Creating…' : 'Create Plan'}
-        </Button>
-      </Box>
-    </Box>
+    <ThemeProvider theme={darkTheme}>
+      <CssBaseline />
+      {renderContent()}
+    </ThemeProvider>
   )
 }
