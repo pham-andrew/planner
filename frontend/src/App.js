@@ -22,7 +22,9 @@ import MenuItem from '@mui/material/MenuItem';
 import InputLabel from '@mui/material/InputLabel';
 import FormControl from '@mui/material/FormControl';
 import Tooltip from '@mui/material/Tooltip';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
+import InputAdornment from '@mui/material/InputAdornment';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import { MapContainer, TileLayer, Marker } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 
 const API_BASE = 'http://localhost:5000'
@@ -753,7 +755,7 @@ export default function App() {
                   </Typography>
                   <ListItemText
                     primary={event.activity.name}
-                    secondary={event.activity.description ? `Description: ${event.activity.description}` : ''}
+                    secondary={event.activity.description ? `${event.activity.description}` : ''}
                   />
                 </Box>
                 <Box sx={{ width: 220, height: 140 }}>
@@ -788,24 +790,58 @@ export default function App() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          p: 2,
-          bgcolor: '#f4f6f8',
+          p: { xs: 2, md: 3 },
+          bgcolor: 'transparent',
         }}
       >
-        <Box sx={{ width: 500, p: 4, bgcolor: 'white', borderRadius: 2, boxShadow: 3 }}>
+        <Box sx={{ width: 'min(100%, 760px)', p: { xs: 3, md: 4 }, bgcolor: 'background.paper', borderRadius: 4, boxShadow: '0 24px 80px rgba(15, 23, 42, 0.08)' }}>
           {loading && <Typography>Loading...</Typography>}
-          {error && <Alert severity='error' sx={{ mb: 2 }}>{error}</Alert>}
+          {error && <Alert severity='error' sx={{ mb: 3, borderRadius: 2 }}>
+            {error}
+          </Alert>}
           {plan && (
             <>
-              <Typography variant='h5' component='h1' sx={{ mb: 1 }}>
+              <Typography variant='h4' component='h1' sx={{ mb: 1.5, fontWeight: 700, letterSpacing: '-0.02em', color: 'primary.main' }}>
                 {plan.name}
               </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                <Typography variant='body2' color='text.secondary' sx={{ mr: 1 }}>
-                  Viewer URL:
+              <Typography variant='body2' color='text.secondary' sx={{ mb: 3, maxWidth: 560 }}>
+                Use the participant link below to share this plan with others. They will be able to suggest activities.
+              </Typography>
+              <Box sx={{ mb: 3 }}>
+                <Typography variant='caption' color='text.secondary' sx={{ display: 'block', mb: 1, fontWeight: 600, letterSpacing: '0.02em' }}>
+                  Share:
                 </Typography>
-                <Typography variant='body2' sx={{ wordBreak: 'break-all' }}>{window.location.href}</Typography>
-                <Button size='small' onClick={() => copyToClipboard(window.location.href)}>Copy</Button>
+                <Tooltip title="Share this with participants — they will be able to suggest activities.">
+                  <TextField
+                    fullWidth
+                    size='small'
+                    value={window.location.href}
+                    variant='outlined'
+                    InputProps={{
+                      readOnly: true,
+                      sx: {
+                        bgcolor: '#f8fbff',
+                        borderRadius: '14px',
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          borderColor: '#dbeafe',
+                        },
+                        '& .MuiInputBase-input': {
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        },
+                      },
+                      endAdornment: (
+                        <InputAdornment position='end'>
+                          <IconButton size='small' onClick={() => copyToClipboard(window.location.href)} edge='end'>
+                            <ContentCopyIcon fontSize='small' />
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    }}
+                    sx={{ minWidth: 0 }}
+                  />
+                </Tooltip>
               </Box>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                 <Typography variant='body2' color='text.secondary' sx={{ mr: 1 }}>
@@ -814,7 +850,7 @@ export default function App() {
                 <Typography variant='body2'>{plan.timezone || browserTimeZone}</Typography>
               </Box>
 
-              <Tabs value={activeTab} onChange={(event, newValue) => setActiveTab(newValue)}>
+              <Tabs value={activeTab} onChange={(event, newValue) => setActiveTab(newValue)} indicatorColor='primary' textColor='primary' sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}>
                 <Tab label='Activities' />
                 <Tab label='Itinerary' />
                 <Tab label='Today' />
@@ -1029,11 +1065,11 @@ export default function App() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          p: 2,
-          bgcolor: '#f4f6f8',
+          p: { xs: 2, md: 3 },
+          bgcolor: 'transparent',
         }}
       >
-        <Box sx={{ width: 500, p: 4, bgcolor: 'white', borderRadius: 2, boxShadow: 3 }}>
+        <Box sx={{ width: 'min(100%, 760px)', p: { xs: 3, md: 4 }, bgcolor: 'background.paper', borderRadius: 4, boxShadow: '0 24px 80px rgba(15, 23, 42, 0.08)' }}>
           
           {loading && <Typography>Loading...</Typography>}
           {error && <Alert severity='error' sx={{ mb: 2 }}>{error}</Alert>}
@@ -1054,7 +1090,7 @@ export default function App() {
                     autoFocus
                   />
                 ) : (
-                  <Typography variant='h5' component='h1' sx={{ flexGrow: 1 }}>
+                  <Typography variant='h4' component='h1' sx={{ flexGrow: 1, fontWeight: 700, color: 'primary.main' }}>
                     {plan.name}
                   </Typography>
                 )}
@@ -1064,29 +1100,80 @@ export default function App() {
                   </IconButton>
                 )}
               </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                <Typography variant='body2' color='text.secondary' sx={{ mr: 1 }}>
-                  Editors URL:
+              <Typography variant='body2' color='text.secondary' sx={{ mb: 3, maxWidth: 560 }}>
+                Use the edit link below to manage activities and update your itinerary. Keep this link private to preserve edit access.
+              </Typography>
+              <Box sx={{ mb: 3 }}>
+                <Typography variant='caption' color='text.secondary' sx={{ display: 'block', mb: 1, fontWeight: 600, letterSpacing: '0.02em' }}>
+                  Edit:
                 </Typography>
                 <Tooltip title="Only share this with editors — do not lose this URL or you won't be able to edit your plan.">
-                  <Typography
-                    component='a'
-                    href={window.location.href}
-                    variant='body2'
-                    sx={{ wordBreak: 'break-all', textDecoration: 'underline', cursor: 'pointer' }}
-                  >
-                    {window.location.href}
-                  </Typography>
+                  <TextField
+                    fullWidth
+                    size='small'
+                    value={window.location.href}
+                    variant='outlined'
+                    InputProps={{
+                      readOnly: true,
+                      sx: {
+                        bgcolor: '#f8fbff',
+                        borderRadius: '14px',
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          borderColor: '#dbeafe',
+                        },
+                        '& .MuiInputBase-input': {
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        },
+                      },
+                      endAdornment: (
+                        <InputAdornment position='end'>
+                          <IconButton size='small' onClick={() => copyToClipboard(window.location.href)} edge='end'>
+                            <ContentCopyIcon fontSize='small' />
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    }}
+                    sx={{ minWidth: 0 }}
+                  />
                 </Tooltip>
               </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                <Typography variant='body2' color='text.secondary' sx={{ mr: 1 }}>
-                  Viewer URL:
+              <Box sx={{ mb: 3 }}>
+                <Typography variant='caption' color='text.secondary' sx={{ display: 'block', mb: 1, fontWeight: 600, letterSpacing: '0.02em' }}>
+                  View:
                 </Typography>
-                <Typography variant='body2' sx={{ wordBreak: 'break-all' }}>
-                  {plan.viewSecret ? `${window.location.origin}/view/${plan.viewSecret}` : ''}
-                </Typography>
-                <Button size='small' onClick={() => copyToClipboard(plan.viewSecret ? `${window.location.origin}/view/${plan.viewSecret}` : window.location.href)}>Copy</Button>
+                <Tooltip title="Share this with participants — they will be able to suggest activities.">
+                  <TextField
+                    fullWidth
+                    size='small'
+                    value={plan.viewSecret ? `${window.location.origin}/view/${plan.viewSecret}` : ''}
+                    variant='outlined'
+                    InputProps={{
+                      readOnly: true,
+                      sx: {
+                        bgcolor: '#f8fbff',
+                        borderRadius: '14px',
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          borderColor: '#dbeafe',
+                        },
+                        '& .MuiInputBase-input': {
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        },
+                      },
+                      endAdornment: (
+                        <InputAdornment position='end'>
+                          <IconButton size='small' onClick={() => copyToClipboard(plan.viewSecret ? `${window.location.origin}/view/${plan.viewSecret}` : window.location.href)} edge='end'>
+                            <ContentCopyIcon fontSize='small' />
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    }}
+                    sx={{ minWidth: 0 }}
+                  />
+                </Tooltip>
               </Box>
               <FormControl fullWidth sx={{ mb: 2 }}>
                 <InputLabel id='plan-timezone-label'>Plan time zone</InputLabel>
@@ -1104,7 +1191,7 @@ export default function App() {
                   ))}
                 </Select>
               </FormControl>
-              <Tabs value={activeTab} onChange={(event, newValue) => setActiveTab(newValue)}>
+              <Tabs value={activeTab} onChange={(event, newValue) => setActiveTab(newValue)} indicatorColor='primary' textColor='primary' sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}>
                 <Tab label='Activities' />
                 <Tab label='Itinerary' />
                 <Tab label='Today' />
@@ -1112,7 +1199,7 @@ export default function App() {
 
               <TabPanel value={activeTab} index={0}>
                 <Stack direction='row' spacing={2} sx={{ mb: 2 }}>
-                  <Button variant='outlined' fullWidth onClick={() => openActivityDialog()}>
+                  <Button variant='contained' color='primary' fullWidth onClick={() => openActivityDialog()}>
                     Add Activity
                   </Button>
                 </Stack>
@@ -1121,7 +1208,7 @@ export default function App() {
 
               <TabPanel value={activeTab} index={1}>
                 <Stack direction='row' spacing={2} sx={{ mb: 2 }}>
-                  <Button variant='outlined' fullWidth onClick={() => openEventDialog()}>
+                  <Button variant='contained' color='primary' fullWidth onClick={() => openEventDialog()}>
                     Add Event
                   </Button>
                 </Stack>
@@ -1326,12 +1413,12 @@ export default function App() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        bgcolor: '#f4f6f8',
-        p: 2,
+        bgcolor: 'transparent',
+        p: { xs: 2, md: 3 },
       }}
     >
-      <Box sx={{ width: 400, p: 4, bgcolor: 'white', borderRadius: 2, boxShadow: 3 }}>
-        <Typography variant='h4' mb={2} textAlign='center'>
+      <Box sx={{ width: 'min(100%, 520px)', p: { xs: 3, md: 4 }, bgcolor: 'background.paper', borderRadius: 4, boxShadow: '0 24px 80px rgba(15, 23, 42, 0.08)' }}>
+        <Typography variant='h4' mb={2} textAlign='center' sx={{ fontWeight: 700, color: 'primary.main' }}>
           Create a New Plan
         </Typography>
         <TextField
