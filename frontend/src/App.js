@@ -860,9 +860,9 @@ export default function App() {
             minHeight: '100vh',
             display: 'flex',
             position: 'relative',
-            alignItems: 'center',
+            alignItems: { xs: 'flex-start', md: 'center' },
             justifyContent: 'center',
-            bgcolor: 'transparent',
+            bgcolor: { xs: 'background.default', md: 'transparent' },
             p: { xs: 0, md: 3 },
           }}
         >
@@ -891,14 +891,14 @@ export default function App() {
           >
             📱 Site designed for mobile
           </Box>
-          <Box sx={{ width: 'min(100%, 520px)', p: { xs: 2, md: 4 }, bgcolor: 'background.paper', borderRadius: { xs: 0, md: 4 }, boxShadow: { xs: 'none', md: '0 24px 80px rgba(0, 0, 0, 0.4)' } }}>
+          <Box sx={{ width: 'min(100%, 520px)', p: { xs: 2, md: 4 }, bgcolor: { xs: 'background.default', md: 'background.paper' }, borderRadius: { xs: 0, md: 4 }, boxShadow: { xs: 'none', md: '0 24px 80px rgba(0, 0, 0, 0.4)' } }}>
             <Typography variant='h4' mb={2} textAlign='center' sx={{ fontWeight: 700, color: 'text.primary' }}>
               Make a Plan
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mb: 2 }}>
               <TextField
                 fullWidth
-                label='Name your plan...'
+                label='Name your plan'
                 value={planName}
                 onChange={(e) => setPlanName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
@@ -934,16 +934,16 @@ export default function App() {
         sx={{
           minHeight: '100vh',
           display: 'flex',
-          alignItems: 'center',
+          alignItems: { xs: 'flex-start', md: 'center' },
           justifyContent: 'center',
           p: { xs: 0, md: 3 },
-          bgcolor: 'transparent',
+          bgcolor: { xs: 'background.default', md: 'transparent' },
         }}
       >
-        <Box sx={{ width: 'min(100%, 760px)', p: { xs: 2, md: 4 }, bgcolor: 'background.paper', borderRadius: { xs: 0, md: 4 }, boxShadow: { xs: 'none', md: '0 24px 80px rgba(0, 0, 0, 0.4)' } }}>
+        <Box sx={{ width: 'min(100%, 760px)', p: { xs: 2, md: 4 }, bgcolor: { xs: 'background.default', md: 'background.paper' }, borderRadius: { xs: 0, md: 4 }, boxShadow: { xs: 'none', md: '0 24px 80px rgba(0, 0, 0, 0.4)' } }}>
           {(loading && !plan) && <Typography>Loading...</Typography>}
           {error && <Alert severity='error' sx={{ mb: 3, borderRadius: 2 }}>{error}</Alert>}
-          {plan && (
+            {plan && (
             <>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
                 <Typography variant='h4' component='h1' sx={{ fontWeight: 700, letterSpacing: '-0.02em', color: 'text.primary' }}>
@@ -1002,7 +1002,7 @@ export default function App() {
                     <Tooltip title={[
                       "Add activities you potentially want to do.",
                       "String activities together with times.",
-                      "See what's happening now"
+                      "See what's happening now."
                     ][idx]}>
                       <StepLabel StepIconComponent={CustomStepIcon} icon={['x', 'y', 'z'][idx]}>{label}</StepLabel>
                     </Tooltip>
