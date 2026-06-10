@@ -30,6 +30,12 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import ShareIcon from '@mui/icons-material/Share';
 import SettingsIcon from '@mui/icons-material/Settings';
 import EditIcon from '@mui/icons-material/Edit';
+import LocalActivityIcon from '@mui/icons-material/LocalActivity';
+import LocalActivityOutlinedIcon from '@mui/icons-material/LocalActivityOutlined';
+import EventIcon from '@mui/icons-material/Event';
+import EventOutlinedIcon from '@mui/icons-material/EventOutlined';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import PlayArrowOutlinedIcon from '@mui/icons-material/PlayArrowOutlined';
 import CoffeeMakerIcon from '@mui/icons-material/CoffeeMaker';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -699,45 +705,72 @@ export default function App() {
     const sortedEvents = [...plan.events].sort((a, b) => {
       return getPlanTimestampKey(a.start) - getPlanTimestampKey(b.start)
     })
+
+    const groups = [];
+    sortedEvents.forEach((event) => {
+      const dayIso = getPlanDateIso(event.start) || 'no-date';
+      let lastGroup = groups[groups.length - 1];
+      if (!lastGroup || lastGroup.dayIso !== dayIso) {
+        groups.push({ dayIso, events: [event] });
+      } else {
+        lastGroup.events.push(event);
+      }
+    });
+
     return (
-      <List dense>
-        {sortedEvents.map((event, index) => {
-          const lat = event?.activity?.location?.lat
-          const lng = event?.activity?.location?.lng
-          return (
-            <ListItem
-              key={`event-${index}`}
-              button={!!secretPath || !!viewPath}
-              onClick={secretPath || viewPath ? () => openEventDialog(event) : undefined}
-              sx={{ alignItems: 'flex-start' }}
-            >
-              <Box sx={{ display: 'flex', width: '100%', gap: 2 }}>
-                <Box sx={{ flex: 1 }}>
-                  <Typography variant='body2' color='text.secondary' sx={{ mb: 0.5 }}>
-                    {event.start ? formatPlanDateTime(event.start) : 'No start time'}
-                  </Typography>
-                  <ListItemText
-                    primary={event.activity.name}
-                    secondary={event.activity.description}
-                  />
-                </Box>
-                <Box sx={{ width: 185, height: 140 }}>
-                  {lat !== undefined && lng !== undefined ? (
-                    <MapContainer center={[lat, lng]} zoom={13} style={{ height: '100%', width: '100%' }} scrollWheelZoom={false}>
-                      <TileLayer url='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png' />
-                      <Marker position={[lat, lng]} />
-                    </MapContainer>
-                  ) : (
-                    <Box sx={{ width: '100%', height: '100%', bgcolor: 'action.disabledBackground', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Typography variant='caption' color='text.secondary'>No coordinates</Typography>
+      <>
+        {groups.map((group) => (
+          <Box key={group.dayIso} sx={{ mb: 4 }}>
+            <Divider sx={{ mb: 2 }}>
+              <Typography variant="overline" sx={{ fontWeight: 700, color: 'primary.main', px: 1.5 }}>
+                {group.dayIso === 'no-date' ? 'Unscheduled' : 
+                  new Intl.DateTimeFormat('en-US', { 
+                    weekday: 'long', month: 'short', day: 'numeric',
+                    timeZone: plan?.timezone || browserTimeZone 
+                  }).format(new Date(group.dayIso + 'T12:00:00'))}
+              </Typography>
+            </Divider>
+            <List dense>
+              {group.events.map((event, index) => {
+                const lat = event?.activity?.location?.lat
+                const lng = event?.activity?.location?.lng
+                return (
+                  <ListItem
+                    key={`event-${index}`}
+                    button={!!secretPath || !!viewPath}
+                    onClick={secretPath || viewPath ? () => openEventDialog(event) : undefined}
+                    sx={{ alignItems: 'flex-start' }}
+                  >
+                    <Box sx={{ display: 'flex', width: '100%', gap: 2 }}>
+                      <Box sx={{ flex: 1 }}>
+                        <Typography variant='body2' color='text.secondary' sx={{ mb: 0.5 }}>
+                          {event.start ? formatPlanDateTime(event.start) : 'No start time'}
+                        </Typography>
+                        <ListItemText
+                          primary={event.activity.name}
+                          secondary={event.activity.description}
+                        />
+                      </Box>
+                      <Box sx={{ width: 185, height: 140 }}>
+                        {lat !== undefined && lng !== undefined ? (
+                          <MapContainer center={[lat, lng]} zoom={13} style={{ height: '100%', width: '100%' }} scrollWheelZoom={false}>
+                            <TileLayer url='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png' />
+                            <Marker position={[lat, lng]} />
+                          </MapContainer>
+                        ) : (
+                          <Box sx={{ width: '100%', height: '100%', bgcolor: 'action.disabledBackground', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Typography variant='caption' color='text.secondary'>No coordinates</Typography>
+                          </Box>
+                        )}
+                      </Box>
                     </Box>
-                  )}
-                </Box>
-              </Box>
-            </ListItem>
-          )
-        })}
-      </List>
+                  </ListItem>
+                )
+              })}
+            </List>
+          </Box>
+        ))}
+      </>
     )
   }
 
@@ -802,6 +835,22 @@ export default function App() {
   const TabPanel = ({ children, value, index }) => {
     return value === index ? <Box sx={{ pt: 2 }}>{children}</Box> : null
   }
+
+  const CustomStepIcon = (props) => {
+    const { active, completed, icon: stepKey } = props;
+
+    const iconMap = {
+      'x': completed ? <LocalActivityIcon /> : <LocalActivityOutlinedIcon />,
+      'y': completed ? <EventIcon /> : <EventOutlinedIcon />,
+      'z': completed ? <PlayArrowIcon /> : <PlayArrowOutlinedIcon />,
+    };
+
+    return (
+      <Box sx={{ color: active || completed ? 'primary.main' : 'text.disabled', display: 'flex' }}>
+        {iconMap[stepKey]}
+      </Box>
+    );
+  };
 
   const renderContent = () => {
     if (!viewPath && !secretPath) {
@@ -948,14 +997,14 @@ export default function App() {
               )}
 
               <Stepper activeStep={activeTab} alternativeLabel sx={{ mb: 4 }}>
-                {['Suggest Activities', 'Create Itinerary', 'Go'].map((label, idx) => (
+                {['Activities', 'Itinerary', 'Go'].map((label, idx) => (
                   <Step key={label} onClick={() => setActiveTab(idx)} sx={{ cursor: 'pointer' }}>
                     <Tooltip title={[
                       "Add activities you potentially want to do.",
                       "String activities together with times.",
                       "See what's happening now"
                     ][idx]}>
-                      <StepLabel icon={['x', 'y', 'z'][idx]}>{label}</StepLabel>
+                      <StepLabel StepIconComponent={CustomStepIcon} icon={['x', 'y', 'z'][idx]}>{label}</StepLabel>
                     </Tooltip>
                   </Step>
                 ))}
