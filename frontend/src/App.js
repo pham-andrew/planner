@@ -9,6 +9,9 @@ import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
+import Accordion from '@mui/material/Accordion';
+import AccordionSummary from '@mui/material/AccordionSummary';
+import AccordionDetails from '@mui/material/AccordionDetails';
 import Popover from '@mui/material/Popover';
 import Stack from '@mui/material/Stack';
 import Divider from '@mui/material/Divider';
@@ -37,22 +40,38 @@ import EventOutlinedIcon from '@mui/icons-material/EventOutlined';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PlayArrowOutlinedIcon from '@mui/icons-material/PlayArrowOutlined';
 import CoffeeMakerIcon from '@mui/icons-material/CoffeeMaker';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 
 const API_BASE = 'http://localhost:5000'
 
-const darkTheme = createTheme({
+const pastelTheme = createTheme({
   palette: {
-    mode: 'dark',
+    mode: 'light',
     primary: {
-      main: '#38bdf8', // Sky 400
+      main: '#e87568',
+      light: '#f5a39a',
+      dark: '#c9584d',
+      contrastText: '#fffaf7',
+    },
+    secondary: {
+      main: '#8eb8ad',
+      light: '#c6ded5',
+      dark: '#5e9185',
     },
     background: {
-      default: '#020617', // Slate 950
-      paper: '#0f172a',   // Slate 900
+      default: '#fff8f3',
+      paper: '#fffdfb',
     },
-    divider: 'rgba(255, 255, 255, 0.12)',
+    text: {
+      primary: '#493f3d',
+      secondary: '#756965',
+    },
+    divider: '#eadbd4',
+    error: {
+      main: '#c65d58',
+    },
   },
   typography: {
     fontFamily: '"Inter", "system-ui", "-apple-system", sans-serif',
@@ -91,6 +110,21 @@ const getTimeZoneList = () => {
 }
 
 const browserTimeZone = getBrowserTimeZone()
+
+function formatActivityDuration(start, end) {
+  if (!start || !end) {
+    return ''
+  }
+
+  const durationMinutes = Math.round((new Date(end).getTime() - new Date(start).getTime()) / 60000)
+  if (!Number.isFinite(durationMinutes) || durationMinutes < 0) {
+    return ''
+  }
+
+  const hours = Math.floor(durationMinutes / 60)
+  const minutes = durationMinutes % 60
+  return `${hours} hours and ${String(minutes).padStart(2, '0')} minutes`
+}
 
 async function fetchPlan(secretId) {
   const response = await fetch(`${API_BASE}/obj/secret/${secretId}`)
@@ -203,6 +237,7 @@ export default function App() {
   const [planName, setPlanName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [activityError, setActivityError] = useState('');
   const [plan, setPlan] = useState(null);
   const [editName, setEditName] = useState('');
   const [activityDialogOpen, setActivityDialogOpen] = useState(false);
@@ -215,7 +250,7 @@ export default function App() {
   const [editingActivityId, setEditingActivityId] = useState('');
   const [editingEventId, setEditingEventId] = useState('');
   const [selectedEvent, setSelectedEvent] = useState(null);
-  const [activityForm, setActivityForm] = useState({ name: '', description: '', address: '', locationLat: '', locationLng: '', duration: '', suggestedStart: '', suggestedEnd: '' });
+  const [activityForm, setActivityForm] = useState({ name: '', description: '', address: '', locationLat: '', locationLng: '', suggestedStart: '', suggestedEnd: '' });
   const [eventForm, setEventForm] = useState({ activityId: '', start: '', end: '' });
   const [showEditLinkPopover, setShowEditLinkPopover] = useState(false);
   const editLinkButtonRef = useRef(null);
@@ -301,7 +336,8 @@ export default function App() {
   }
 
   const resetActivityForm = () => {
-    setActivityForm({ name: '', description: '', address: '', locationLat: '', locationLng: '', duration: '', suggestedStart: '', suggestedEnd: '' })
+    setActivityForm({ name: '', description: '', address: '', locationLat: '', locationLng: '', suggestedStart: '', suggestedEnd: '' })
+    setActivityError('')
     setEditingActivityId('')
   }
 
@@ -323,7 +359,6 @@ export default function App() {
       address: activity.address || '',
       locationLat: activity.location?.lat ?? '',
       locationLng: activity.location?.lng ?? '',
-      duration: activity.duration || '',
       suggestedStart: activity.suggestedStart || '',
       suggestedEnd: activity.suggestedEnd || '',
     })
@@ -360,10 +395,11 @@ export default function App() {
 
   const handleSaveActivity = async () => {
     if (!activityForm.name.trim()) {
-      setError('Activity name is required.')
+      setActivityError('Activity name is required.')
       return
     }
 
+    setActivityError('')
     setLoading(true)
     setError('')
     try {
@@ -371,7 +407,7 @@ export default function App() {
         name: activityForm.name,
         description: activityForm.description,
         address: activityForm.address,
-        duration: activityForm.duration,
+        duration: formatActivityDuration(activityForm.suggestedStart, activityForm.suggestedEnd),
         suggestedStart: activityForm.suggestedStart || undefined,
         suggestedEnd: activityForm.suggestedEnd || undefined,
         locationLat: activityForm.locationLat,
@@ -463,7 +499,6 @@ export default function App() {
 
   const handleAddressSuggest = async () => {
     if (!activityForm.address.trim()) {
-      setError('Enter an address to suggest coordinates.')
       return
     }
 
@@ -875,15 +910,15 @@ export default function App() {
               transform: 'translateX(-50%)',
               zIndex: 9999,
               color: 'primary.main',
-              bgcolor: 'rgba(56, 189, 248, 0.1)',
+              bgcolor: 'rgba(232, 117, 104, 0.12)',
               backdropFilter: 'blur(8px)',
               px: 3,
               py: 1,
               borderRadius: 10,
               fontSize: '0.8rem',
               fontWeight: 600,
-              border: '1px solid rgba(56, 189, 248, 0.3)',
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)',
+              border: '1px solid rgba(232, 117, 104, 0.35)',
+              boxShadow: '0 4px 20px rgba(117, 78, 68, 0.12)',
               pointerEvents: 'none',
               textAlign: 'center',
               whiteSpace: 'nowrap',
@@ -891,7 +926,7 @@ export default function App() {
           >
             📱 Site designed for mobile
           </Box>
-          <Box sx={{ width: 'min(100%, 520px)', p: { xs: 2, md: 4 }, bgcolor: { xs: 'background.default', md: 'background.paper' }, borderRadius: { xs: 0, md: 4 }, boxShadow: { xs: 'none', md: '0 24px 80px rgba(0, 0, 0, 0.4)' } }}>
+          <Box sx={{ width: 'min(100%, 520px)', p: { xs: 2, md: 4 }, bgcolor: { xs: 'background.default', md: 'background.paper' }, borderRadius: { xs: 0, md: 4 }, boxShadow: { xs: 'none', md: '0 24px 80px rgba(117, 78, 68, 0.14)' } }}>
             <Typography variant='h4' mb={2} textAlign='center' sx={{ fontWeight: 700, color: 'text.primary' }}>
               Make a Plan
             </Typography>
@@ -937,10 +972,11 @@ export default function App() {
           alignItems: { xs: 'flex-start', md: 'center' },
           justifyContent: 'center',
           p: { xs: 0, md: 3 },
+          pb: { xs: 10, md: 11 },
           bgcolor: { xs: 'background.default', md: 'transparent' },
         }}
       >
-        <Box sx={{ width: 'min(100%, 760px)', p: { xs: 2, md: 4 }, bgcolor: { xs: 'background.default', md: 'background.paper' }, borderRadius: { xs: 0, md: 4 }, boxShadow: { xs: 'none', md: '0 24px 80px rgba(0, 0, 0, 0.4)' } }}>
+        <Box sx={{ width: 'min(100%, 760px)', p: { xs: 2, md: 4 }, bgcolor: { xs: 'background.default', md: 'background.paper' }, borderRadius: { xs: 0, md: 4 }, boxShadow: { xs: 'none', md: '0 24px 80px rgba(117, 78, 68, 0.14)' } }}>
           {(loading && !plan) && <Typography>Loading...</Typography>}
           {error && <Alert severity='error' sx={{ mb: 3, borderRadius: 2 }}>{error}</Alert>}
             {plan && (
@@ -1011,20 +1047,10 @@ export default function App() {
               </Stepper>
 
               <TabPanel value={activeTab} index={0}>
-                {isEditor && (
-                  <Stack direction='row' spacing={2} sx={{ mb: 2 }}>
-                    <Button variant='contained' color='primary' fullWidth onClick={() => openActivityDialog()}>Add Activity</Button>
-                  </Stack>
-                )}
                 {renderActivities()}
               </TabPanel>
 
               <TabPanel value={activeTab} index={1}>
-                {isEditor && (
-                  <Stack direction='row' spacing={2} sx={{ mb: 2 }}>
-                    <Button variant='contained' color='primary' fullWidth onClick={() => openEventDialog()}>Add Event</Button>
-                  </Stack>
-                )}
                 {renderEvents()}
               </TabPanel>
 
@@ -1051,12 +1077,16 @@ export default function App() {
               <Dialog open={activityDialogOpen} onClose={closeActivityDialog} fullWidth>
                 <DialogTitle>{editingActivityId ? 'Edit Activity' : 'Add Activity'}</DialogTitle>
                 <DialogContent>
+                  {activityError && <Alert severity='error' sx={{ mb: 2 }}>{activityError}</Alert>}
                   <Stack spacing={2} sx={{ mt: 1 }}>
                     <TextField
                       label='Name'
                       value={activityForm.name}
                       required
-                      onChange={(e) => setActivityForm((prev) => ({ ...prev, name: e.target.value }))}
+                      onChange={(e) => {
+                        setActivityForm((prev) => ({ ...prev, name: e.target.value }))
+                        setActivityError('')
+                      }}
                       disabled={!isEditor}
                     />
                     <TextField
@@ -1066,38 +1096,38 @@ export default function App() {
                       disabled={!isEditor}
                     />
                     <TextField
-                      label='Address'
+                      label='Address or Place Name'
                       value={activityForm.address}
                       onChange={(e) => setActivityForm((prev) => ({ ...prev, address: e.target.value }))}
+                      onBlur={handleAddressSuggest}
                       fullWidth
                       disabled={!isEditor}
                     />
-                    <Stack direction='row' spacing={1} alignItems='flex-end'>
-                      <TextField
-                        label='Latitude'
-                        type='number'
-                        value={activityForm.locationLat}
-                        onChange={(e) => setActivityForm((prev) => ({ ...prev, locationLat: e.target.value }))}
-                        sx={{ flex: 1 }}
-                        disabled={!isEditor}
-                      />
-                      <TextField
-                        label='Longitude'
-                        type='number'
-                        value={activityForm.locationLng}
-                        onChange={(e) => setActivityForm((prev) => ({ ...prev, locationLng: e.target.value }))}
-                        sx={{ flex: 1 }}
-                        disabled={!isEditor}
-                      />
-                      <Button
-                        variant='outlined'
-                        onClick={handleAddressSuggest}
-                        disabled={!isEditor || activityLookupLoading || !activityForm.address.trim()}
-                      >
-                        {activityLookupLoading ? 'Looking up…' : 'Suggest'}
-                      </Button>
-                    </Stack>
-                    <TextField label='Duration' value={activityForm.duration} onChange={(e) => setActivityForm((prev) => ({ ...prev, duration: e.target.value }))} disabled={!isEditor} />
+                    <Accordion disableGutters>
+                      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                        Advanced
+                      </AccordionSummary>
+                      <AccordionDetails>
+                        <Stack direction='row' spacing={1}>
+                          <TextField
+                            label='Latitude'
+                            type='number'
+                            value={activityForm.locationLat}
+                            onChange={(e) => setActivityForm((prev) => ({ ...prev, locationLat: e.target.value }))}
+                            sx={{ flex: 1 }}
+                            disabled={!isEditor || activityLookupLoading}
+                          />
+                          <TextField
+                            label='Longitude'
+                            type='number'
+                            value={activityForm.locationLng}
+                            onChange={(e) => setActivityForm((prev) => ({ ...prev, locationLng: e.target.value }))}
+                            sx={{ flex: 1 }}
+                            disabled={!isEditor || activityLookupLoading}
+                          />
+                        </Stack>
+                      </AccordionDetails>
+                    </Accordion>
                     <TextField label='Suggested Start' type='datetime-local' value={activityForm.suggestedStart} onChange={(e) => setActivityForm((prev) => ({ ...prev, suggestedStart: e.target.value }))} InputLabelProps={{ shrink: true }} disabled={!isEditor} />
                     <TextField label='Suggested End' type='datetime-local' value={activityForm.suggestedEnd} onChange={(e) => setActivityForm((prev) => ({ ...prev, suggestedEnd: e.target.value }))} InputLabelProps={{ shrink: true }} disabled={!isEditor} />
                   </Stack>
@@ -1160,12 +1190,41 @@ export default function App() {
             </>
           )}
         </Box>
+        {isEditor && (activeTab === 0 || activeTab === 1) && (
+          <Box
+            sx={{
+              position: 'fixed',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              zIndex: 1100,
+              px: { xs: 2, md: 3 },
+              py: 1.5,
+              bgcolor: 'rgba(255, 253, 251, 0.94)',
+              backdropFilter: 'blur(12px)',
+              borderTop: '1px solid',
+              borderColor: 'divider',
+              boxShadow: '0 -8px 24px rgba(117, 78, 68, 0.1)',
+            }}
+          >
+            {activeTab === 0 && (
+              <Button variant='contained' color='primary' fullWidth onClick={() => openActivityDialog()} sx={{ width: 'min(100%, 760px)', display: 'flex', mx: 'auto' }}>
+                Add Activity
+              </Button>
+            )}
+            {activeTab === 1 && (
+              <Button variant='contained' color='primary' fullWidth onClick={() => openEventDialog()} sx={{ width: 'min(100%, 760px)', display: 'flex', mx: 'auto' }}>
+                Add Event
+              </Button>
+            )}
+          </Box>
+        )}
       </Box>
     )
   }
 
   return (
-    <ThemeProvider theme={darkTheme}>
+    <ThemeProvider theme={pastelTheme}>
       <CssBaseline />
       {renderContent()}
     </ThemeProvider>

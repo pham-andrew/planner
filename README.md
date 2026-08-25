@@ -19,4 +19,4 @@ Planner is a simple planning app.
 
 ![alt text](</screenshots/Screenshot 2026-06-10 012432.png>)
 
-Permissions: When a plan is created a secret editor and viewer url are created with it. Editors can create the itinerary fom their URL, viewers can suggest activities.
+Permissions: When a plan is created, a secret editor and viewer url are created with it. Editors can create the itinerary fom their URL, viewers can suggest activities.
