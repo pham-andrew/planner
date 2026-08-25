@@ -9,9 +9,7 @@ import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
-import Accordion from '@mui/material/Accordion';
-import AccordionSummary from '@mui/material/AccordionSummary';
-import AccordionDetails from '@mui/material/AccordionDetails';
+import Collapse from '@mui/material/Collapse';
 import Popover from '@mui/material/Popover';
 import Stack from '@mui/material/Stack';
 import Divider from '@mui/material/Divider';
@@ -246,6 +244,7 @@ export default function App() {
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
   const [timeZones, setTimeZones] = useState([]);
   const [activityLookupLoading, setActivityLookupLoading] = useState(false);
+  const [activityAdvancedOpen, setActivityAdvancedOpen] = useState(false);
   const viewerTabInitialized = useRef(false);
   const [editingActivityId, setEditingActivityId] = useState('');
   const [editingEventId, setEditingEventId] = useState('');
@@ -347,6 +346,7 @@ export default function App() {
   }
 
   const openActivityDialog = (activity) => {
+    setActivityAdvancedOpen(false)
     if (!activity) {
       resetActivityForm()
       setActivityDialogOpen(true)
@@ -384,6 +384,7 @@ export default function App() {
 
   const closeActivityDialog = () => {
     setActivityDialogOpen(false)
+    setActivityAdvancedOpen(false)
     resetActivityForm()
   }
 
@@ -1102,32 +1103,43 @@ export default function App() {
                       onBlur={handleAddressSuggest}
                       fullWidth
                       disabled={!isEditor}
+                      InputProps={{
+                        endAdornment: (
+                          <InputAdornment position='end'>
+                            <Box
+                              onClick={() => setActivityAdvancedOpen((prev) => !prev)}
+                              sx={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', color: 'text.secondary', whiteSpace: 'nowrap' }}
+                            >
+                              <Typography variant='body2'>Advanced</Typography>
+                              <ExpandMoreIcon
+                                fontSize='small'
+                                sx={{ transform: activityAdvancedOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}
+                              />
+                            </Box>
+                          </InputAdornment>
+                        ),
+                      }}
                     />
-                    <Accordion disableGutters>
-                      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                        Advanced
-                      </AccordionSummary>
-                      <AccordionDetails>
-                        <Stack direction='row' spacing={1}>
-                          <TextField
-                            label='Latitude'
-                            type='number'
-                            value={activityForm.locationLat}
-                            onChange={(e) => setActivityForm((prev) => ({ ...prev, locationLat: e.target.value }))}
-                            sx={{ flex: 1 }}
-                            disabled={!isEditor || activityLookupLoading}
-                          />
-                          <TextField
-                            label='Longitude'
-                            type='number'
-                            value={activityForm.locationLng}
-                            onChange={(e) => setActivityForm((prev) => ({ ...prev, locationLng: e.target.value }))}
-                            sx={{ flex: 1 }}
-                            disabled={!isEditor || activityLookupLoading}
-                          />
-                        </Stack>
-                      </AccordionDetails>
-                    </Accordion>
+                    <Collapse in={activityAdvancedOpen}>
+                      <Stack direction='row' spacing={1}>
+                        <TextField
+                          label='Latitude'
+                          type='number'
+                          value={activityForm.locationLat}
+                          onChange={(e) => setActivityForm((prev) => ({ ...prev, locationLat: e.target.value }))}
+                          sx={{ flex: 1 }}
+                          disabled={!isEditor || activityLookupLoading}
+                        />
+                        <TextField
+                          label='Longitude'
+                          type='number'
+                          value={activityForm.locationLng}
+                          onChange={(e) => setActivityForm((prev) => ({ ...prev, locationLng: e.target.value }))}
+                          sx={{ flex: 1 }}
+                          disabled={!isEditor || activityLookupLoading}
+                        />
+                      </Stack>
+                    </Collapse>
                     <TextField label='Suggested Start' type='datetime-local' value={activityForm.suggestedStart} onChange={(e) => setActivityForm((prev) => ({ ...prev, suggestedStart: e.target.value }))} InputLabelProps={{ shrink: true }} disabled={!isEditor} />
                     <TextField label='Suggested End' type='datetime-local' value={activityForm.suggestedEnd} onChange={(e) => setActivityForm((prev) => ({ ...prev, suggestedEnd: e.target.value }))} InputLabelProps={{ shrink: true }} disabled={!isEditor} />
                   </Stack>
